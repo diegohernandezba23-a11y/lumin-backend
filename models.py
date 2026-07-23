@@ -41,10 +41,12 @@ class Actividad(Base):
     id_actividad = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(150), nullable=False)
     descripcion = Column(String)
+    lugar = Column(String(150))
     fecha = Column(TIMESTAMP, nullable=False)
     puntos_otorga = Column(Integer, default=0)
     creado_por = Column(UUID(as_uuid=True), nullable=True)
     fecha_creacion = Column(TIMESTAMP, server_default=func.now())
+    
 
 class Inscripcion(Base):
     __tablename__ = "inscripciones"
@@ -53,4 +55,3 @@ class Inscripcion(Base):
     id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"))
     fecha_inscripcion = Column(TIMESTAMP, server_default=func.now())
 
-    

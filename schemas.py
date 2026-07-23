@@ -46,10 +46,11 @@ class ConfirmarCodigo(BaseModel):
 class ActividadCreate(BaseModel):
     nombre: str
     descripcion: Optional[str] = None
+    lugar: Optional[str] = None
     fecha: datetime
     puntos_otorga: int = 0
+    
 
 class InscripcionCreate(BaseModel):
     id_actividad: int
     id_usuario: int
-    

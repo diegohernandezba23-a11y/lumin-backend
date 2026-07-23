@@ -218,6 +218,7 @@ def crear_actividad(datos: schemas.ActividadCreate, db: Session = Depends(get_db
     nueva = models.Actividad(
         nombre=datos.nombre,
         descripcion=datos.descripcion,
+        lugar=datos.lugar,
         fecha=datos.fecha,
         puntos_otorga=datos.puntos_otorga,
     )
