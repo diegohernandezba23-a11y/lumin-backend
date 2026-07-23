@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 
 class UsuarioCreate(BaseModel):
     nombre: str
@@ -41,3 +42,14 @@ class ConfirmarCodigo(BaseModel):
     correo: str
     codigo: str
     nueva_password: str
+
+class ActividadCreate(BaseModel):
+    nombre: str
+    descripcion: Optional[str] = None
+    fecha: datetime
+    puntos_otorga: int = 0
+
+class InscripcionCreate(BaseModel):
+    id_actividad: int
+    id_usuario: int
+    

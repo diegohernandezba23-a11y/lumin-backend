@@ -211,3 +211,76 @@ def login_usuario(datos: schemas.UsuarioLogin, db: Session = Depends(get_db)):
         "id_usuario": usuario.id_usuario,
         "nombre": usuario.nombre
     }
+
+# ---------- CREAR ACTIVIDAD (admin) ----------
+@app.post("/actividades")
+def crear_actividad(datos: schemas.ActividadCreate, db: Session = Depends(get_db)):
+    nueva = models.Actividad(
+        nombre=datos.nombre,
+        descripcion=datos.descripcion,
+        fecha=datos.fecha,
+        puntos_otorga=datos.puntos_otorga,
+    )
+    db.add(nueva)
+    db.commit()
+    db.refresh(nueva)
+    return nueva
+
+# ---------- LISTAR ACTIVIDADES (admin y usuario) ----------
+@app.get("/actividades")
+def listar_actividades(db: Session = Depends(get_db)):
+    return db.query(models.Actividad).order_by(models.Actividad.fecha).all()
+
+# ---------- INSCRIBIRSE A UNA ACTIVIDAD (usuario) ----------
+@app.post("/inscripciones")
+def inscribirse(datos: schemas.InscripcionCreate, db: Session = Depends(get_db)):
+    ya_existe = db.query(models.Inscripcion).filter(
+        models.Inscripcion.id_actividad == datos.id_actividad,
+        models.Inscripcion.id_usuario == datos.id_usuario,
+    ).first()
+    if ya_existe:
+        raise HTTPException(status_code=400, detail="Ya estás inscrito en esta actividad")
+
+    nueva = models.Inscripcion(id_actividad=datos.id_actividad, id_usuario=datos.id_usuario)
+    db.add(nueva)
+    db.commit()
+    return {"mensaje": "Inscripción exitosa"}
+
+# ---------- HISTORIAL DE UNA TARJETA (con datos del dueño) ----------
+@app.get("/tarjetas/{codigo_tarjeta}/completo")
+def tarjeta_completa(codigo_tarjeta: str, db: Session = Depends(get_db)):
+    tarjeta = db.query(models.Tarjeta).filter(
+        models.Tarjeta.codigo_tarjeta == codigo_tarjeta
+    ).first()
+    if not tarjeta:
+        raise HTTPException(status_code=404, detail="Tarjeta no encontrada")
+
+    usuario = db.query(models.Usuario).filter(
+        models.Usuario.id_usuario == tarjeta.id_usuario
+    ).first()
+
+    movimientos = db.query(models.MovimientoPuntos).filter(
+        models.MovimientoPuntos.id_tarjeta == tarjeta.id_tarjeta
+    ).order_by(models.MovimientoPuntos.fecha.desc()).all()
+
+    return {
+        "tarjeta": {
+            "codigo_tarjeta": tarjeta.codigo_tarjeta,
+            "puntos_actuales": tarjeta.puntos_actuales,
+            "estado": tarjeta.estado,
+        },
+        "usuario": {
+            "nombre": usuario.nombre if usuario else None,
+            "correo": usuario.correo if usuario else None,
+            "telefono": usuario.telefono if usuario else None,
+        },
+        "movimientos": [
+            {
+                "tipo": m.tipo,
+                "cantidad": m.cantidad,
+                "motivo": m.motivo,
+                "fecha": m.fecha.isoformat(),
+            } for m in movimientos
+        ],
+    }
+

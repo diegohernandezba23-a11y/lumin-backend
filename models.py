@@ -35,4 +35,22 @@ class Administrador(Base):
     id_admin = Column(UUID(as_uuid=True), primary_key=True)
     nombre_completo = Column(String(150), nullable=False)
     fecha_creacion = Column(TIMESTAMP, server_default=func.now())
+
+class Actividad(Base):
+    __tablename__ = "actividades"
+    id_actividad = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(150), nullable=False)
+    descripcion = Column(String)
+    fecha = Column(TIMESTAMP, nullable=False)
+    puntos_otorga = Column(Integer, default=0)
+    creado_por = Column(UUID(as_uuid=True), nullable=True)
+    fecha_creacion = Column(TIMESTAMP, server_default=func.now())
+
+class Inscripcion(Base):
+    __tablename__ = "inscripciones"
+    id_inscripcion = Column(Integer, primary_key=True, index=True)
+    id_actividad = Column(Integer, ForeignKey("actividades.id_actividad"))
+    id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"))
+    fecha_inscripcion = Column(TIMESTAMP, server_default=func.now())
+
     
