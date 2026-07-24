@@ -285,3 +285,35 @@ def tarjeta_completa(codigo_tarjeta: str, db: Session = Depends(get_db)):
         ],
     }
 
+@app.get("/usuarios/{id_usuario}/tarjeta")
+def tarjeta_de_usuario(id_usuario: int, db: Session = Depends(get_db)):
+    tarjeta = db.query(models.Tarjeta).filter(
+        models.Tarjeta.id_usuario == id_usuario
+    ).first()
+    if not tarjeta:
+        raise HTTPException(status_code=404, detail="No tienes tarjeta registrada todavía")
+
+    movimientos = db.query(models.MovimientoPuntos).filter(
+        models.MovimientoPuntos.id_tarjeta == tarjeta.id_tarjeta
+    ).order_by(models.MovimientoPuntos.fecha.desc()).all()
+
+    usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
+
+    return {
+        "tarjeta": {
+            "codigo_tarjeta": tarjeta.codigo_tarjeta,
+            "puntos_actuales": tarjeta.puntos_actuales,
+            "estado": tarjeta.estado,
+        },
+        "usuario": {
+            "id_usuario": usuario.id_usuario if usuario else None,
+            "nombre": usuario.nombre if usuario else None,
+            "correo": usuario.correo if usuario else None,
+            "telefono": usuario.telefono if usuario else None,
+        },
+        "movimientos": [
+            {"tipo": m.tipo, "cantidad": m.cantidad, "motivo": m.motivo, "fecha": m.fecha.isoformat()}
+            for m in movimientos
+        ],
+    }
+
