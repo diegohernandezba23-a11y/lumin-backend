@@ -54,3 +54,7 @@ class ActividadCreate(BaseModel):
 class InscripcionCreate(BaseModel):
     id_actividad: int
     id_usuario: int
+
+class TarjetaEdit(BaseModel):
+    id_usuario: Optional[int] = None
+    estado: Optional[str] = None

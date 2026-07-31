@@ -317,3 +317,66 @@ def tarjeta_de_usuario(id_usuario: int, db: Session = Depends(get_db)):
         ],
     }
 
+# ---------- EDITAR / ELIMINAR ACTIVIDAD ----------
+@app.put("/actividades/{id_actividad}")
+def editar_actividad(id_actividad: int, datos: schemas.ActividadCreate, db: Session = Depends(get_db)):
+    actividad = db.query(models.Actividad).filter(models.Actividad.id_actividad == id_actividad).first()
+    if not actividad:
+        raise HTTPException(status_code=404, detail="Actividad no encontrada")
+    actividad.nombre = datos.nombre
+    actividad.descripcion = datos.descripcion
+    actividad.lugar = datos.lugar
+    actividad.fecha = datos.fecha
+    actividad.puntos_otorga = datos.puntos_otorga
+    db.commit()
+    db.refresh(actividad)
+    return actividad
+
+@app.delete("/actividades/{id_actividad}")
+def eliminar_actividad(id_actividad: int, db: Session = Depends(get_db)):
+    actividad = db.query(models.Actividad).filter(models.Actividad.id_actividad == id_actividad).first()
+    if not actividad:
+        raise HTTPException(status_code=404, detail="Actividad no encontrada")
+    db.query(models.Inscripcion).filter(models.Inscripcion.id_actividad == id_actividad).delete()
+    db.delete(actividad)
+    db.commit()
+    return {"mensaje": "Actividad eliminada"}
+
+# ---------- VER INSCRITOS DE UNA ACTIVIDAD ----------
+@app.get("/actividades/{id_actividad}/inscritos")
+def ver_inscritos(id_actividad: int, db: Session = Depends(get_db)):
+    inscripciones = db.query(models.Inscripcion).filter(models.Inscripcion.id_actividad == id_actividad).all()
+    resultado = []
+    for insc in inscripciones:
+        usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == insc.id_usuario).first()
+        resultado.append({
+            "id_usuario": insc.id_usuario,
+            "nombre": usuario.nombre if usuario else "Desconocido",
+            "correo": usuario.correo if usuario else None,
+        })
+    return resultado
+
+# ---------- EDITAR / ELIMINAR TARJETA ----------
+@app.put("/tarjetas/{codigo_tarjeta}")
+def editar_tarjeta(codigo_tarjeta: str, datos: schemas.TarjetaEdit, db: Session = Depends(get_db)):
+    tarjeta = db.query(models.Tarjeta).filter(models.Tarjeta.codigo_tarjeta == codigo_tarjeta).first()
+    if not tarjeta:
+        raise HTTPException(status_code=404, detail="Tarjeta no encontrada")
+    if datos.id_usuario is not None:
+        tarjeta.id_usuario = datos.id_usuario
+    if datos.estado is not None:
+        tarjeta.estado = datos.estado
+    db.commit()
+    db.refresh(tarjeta)
+    return tarjeta
+
+@app.delete("/tarjetas/{codigo_tarjeta}")
+def eliminar_tarjeta(codigo_tarjeta: str, db: Session = Depends(get_db)):
+    tarjeta = db.query(models.Tarjeta).filter(models.Tarjeta.codigo_tarjeta == codigo_tarjeta).first()
+    if not tarjeta:
+        raise HTTPException(status_code=404, detail="Tarjeta no encontrada")
+    db.query(models.MovimientoPuntos).filter(models.MovimientoPuntos.id_tarjeta == tarjeta.id_tarjeta).delete()
+    db.delete(tarjeta)
+    db.commit()
+    return {"mensaje": "Tarjeta eliminada"}
+
