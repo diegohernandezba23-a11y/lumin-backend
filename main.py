@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from database import engine, get_db, Base
 import models
 import schemas
@@ -22,10 +23,11 @@ app.add_middleware(
 def home():
     return {"mensaje": "Lumin API funcionando"}
 
-
-@app.get("/")
-def home():
-    return {"mensaje": "Lumin API funcionando"}
+# ---------- PING (mantener viva la base de datos / evitar pausa de Supabase) ----------
+@app.get("/ping")
+def ping(db: Session = Depends(get_db)):
+    db.execute(text("SELECT 1"))
+    return {"status": "ok"}
 
 # ---------- REGISTRAR USUARIO ----------
 @app.post("/usuarios")
@@ -379,4 +381,3 @@ def eliminar_tarjeta(codigo_tarjeta: str, db: Session = Depends(get_db)):
     db.delete(tarjeta)
     db.commit()
     return {"mensaje": "Tarjeta eliminada"}
-
