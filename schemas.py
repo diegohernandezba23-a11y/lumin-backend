@@ -47,9 +47,21 @@ class ActividadCreate(BaseModel):
     nombre: str
     descripcion: Optional[str] = None
     lugar: Optional[str] = None
-    fecha: datetime
+    fecha_inicio: datetime
+    fecha_fin: datetime
     puntos_otorga: int = 0
-    
+
+class ActividadResponse(BaseModel):
+    id_actividad: int
+    nombre: str
+    fecha: datetime
+    fecha_inicio: datetime
+    fecha_fin: datetime
+    lugar: Optional[str] = None
+    puntos_otorga: int
+
+    class Config:
+        from_attributes = True
 
 class InscripcionCreate(BaseModel):
     id_actividad: int

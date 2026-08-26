@@ -221,7 +221,9 @@ def crear_actividad(datos: schemas.ActividadCreate, db: Session = Depends(get_db
         nombre=datos.nombre,
         descripcion=datos.descripcion,
         lugar=datos.lugar,
-        fecha=datos.fecha,
+        fecha=datos.fecha_inicio,
+        fecha_inicio=datos.fecha_inicio,
+        fecha_fin=datos.fecha_fin,
         puntos_otorga=datos.puntos_otorga,
     )
     db.add(nueva)
@@ -230,7 +232,7 @@ def crear_actividad(datos: schemas.ActividadCreate, db: Session = Depends(get_db
     return nueva
 
 # ---------- LISTAR ACTIVIDADES (admin y usuario) ----------
-@app.get("/actividades")
+@app.get("/actividades", response_model=list[schemas.ActividadResponse])
 def listar_actividades(db: Session = Depends(get_db)):
     return db.query(models.Actividad).order_by(models.Actividad.fecha).all()
 
@@ -328,7 +330,9 @@ def editar_actividad(id_actividad: int, datos: schemas.ActividadCreate, db: Sess
     actividad.nombre = datos.nombre
     actividad.descripcion = datos.descripcion
     actividad.lugar = datos.lugar
-    actividad.fecha = datos.fecha
+    actividad.fecha = datos.fecha_inicio
+    actividad.fecha_inicio = datos.fecha_inicio
+    actividad.fecha_fin = datos.fecha_fin
     actividad.puntos_otorga = datos.puntos_otorga
     db.commit()
     db.refresh(actividad)

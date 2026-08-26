@@ -43,6 +43,8 @@ class Actividad(Base):
     descripcion = Column(String)
     lugar = Column(String(150))
     fecha = Column(TIMESTAMP, nullable=False)
+    fecha_inicio = Column(TIMESTAMP, nullable=True)
+    fecha_fin = Column(TIMESTAMP, nullable=True)
     puntos_otorga = Column(Integer, default=0)
     creado_por = Column(UUID(as_uuid=True), nullable=True)
     fecha_creacion = Column(TIMESTAMP, server_default=func.now())
