@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP
+from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, Date, Time, Boolean, UniqueConstraint
 from sqlalchemy.sql import func
 from database import Base
 from sqlalchemy.dialects.postgresql import UUID
@@ -39,13 +39,19 @@ class Administrador(Base):
 class Actividad(Base):
     __tablename__ = "actividades"
     id_actividad = Column(Integer, primary_key=True, index=True)
+    tipo = Column(String(20), nullable=False, default="evento", server_default="evento")
     nombre = Column(String(150), nullable=False)
     descripcion = Column(String)
     lugar = Column(String(150))
     fecha = Column(TIMESTAMP, nullable=False)
     fecha_inicio = Column(TIMESTAMP, nullable=True)
     fecha_fin = Column(TIMESTAMP, nullable=True)
+    frecuencia = Column(String(20), nullable=True)
+    dia_semana = Column(String(20), nullable=True)
+    hora_inicio = Column(Time, nullable=True)
+    hora_fin = Column(Time, nullable=True)
     puntos_otorga = Column(Integer, default=0)
+    estado = Column(String(20), nullable=False, default="activa", server_default="activa")
     creado_por = Column(UUID(as_uuid=True), nullable=True)
     fecha_creacion = Column(TIMESTAMP, server_default=func.now())
     
@@ -56,4 +62,24 @@ class Inscripcion(Base):
     id_actividad = Column(Integer, ForeignKey("actividades.id_actividad"))
     id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"))
     fecha_inscripcion = Column(TIMESTAMP, server_default=func.now())
+
+
+class Asistencia(Base):
+    __tablename__ = "asistencias"
+    __table_args__ = (
+        UniqueConstraint(
+            "actividad_id",
+            "usuario_id",
+            "fecha_asistencia",
+            name="asistencia_unica",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    actividad_id = Column(Integer, ForeignKey("actividades.id_actividad", ondelete="CASCADE"), nullable=False)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="CASCADE"), nullable=False)
+    fecha_asistencia = Column(Date, nullable=False, server_default=func.current_date())
+    presente = Column(Boolean, nullable=False, default=True, server_default="true")
+    puntos_otorgados = Column(Integer, nullable=False, default=0, server_default="0")
+    created_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
 

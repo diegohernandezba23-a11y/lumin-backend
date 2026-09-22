@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from datetime import date, datetime
 from database import engine, get_db, Base
 import models
 import schemas
@@ -218,13 +219,19 @@ def login_usuario(datos: schemas.UsuarioLogin, db: Session = Depends(get_db)):
 @app.post("/actividades")
 def crear_actividad(datos: schemas.ActividadCreate, db: Session = Depends(get_db)):
     nueva = models.Actividad(
+        tipo=datos.tipo,
         nombre=datos.nombre,
         descripcion=datos.descripcion,
         lugar=datos.lugar,
-        fecha=datos.fecha_inicio,
+        fecha=datos.fecha_inicio or datos.fecha_fin or datetime.utcnow(),
         fecha_inicio=datos.fecha_inicio,
         fecha_fin=datos.fecha_fin,
+        frecuencia=datos.frecuencia,
+        dia_semana=datos.dia_semana,
+        hora_inicio=datos.hora_inicio,
+        hora_fin=datos.hora_fin,
         puntos_otorga=datos.puntos_otorga,
+        estado=datos.estado,
     )
     db.add(nueva)
     db.commit()
@@ -234,7 +241,7 @@ def crear_actividad(datos: schemas.ActividadCreate, db: Session = Depends(get_db
 # ---------- LISTAR ACTIVIDADES (admin y usuario) ----------
 @app.get("/actividades", response_model=list[schemas.ActividadResponse])
 def listar_actividades(db: Session = Depends(get_db)):
-    return db.query(models.Actividad).order_by(models.Actividad.fecha).all()
+    return db.query(models.Actividad).order_by(models.Actividad.fecha_inicio).all()
 
 # ---------- INSCRIBIRSE A UNA ACTIVIDAD (usuario) ----------
 @app.post("/inscripciones")
@@ -327,13 +334,19 @@ def editar_actividad(id_actividad: int, datos: schemas.ActividadCreate, db: Sess
     actividad = db.query(models.Actividad).filter(models.Actividad.id_actividad == id_actividad).first()
     if not actividad:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
+    actividad.tipo = datos.tipo
     actividad.nombre = datos.nombre
     actividad.descripcion = datos.descripcion
     actividad.lugar = datos.lugar
-    actividad.fecha = datos.fecha_inicio
+    actividad.fecha = datos.fecha_inicio or datos.fecha_fin or datetime.utcnow()
     actividad.fecha_inicio = datos.fecha_inicio
     actividad.fecha_fin = datos.fecha_fin
+    actividad.frecuencia = datos.frecuencia
+    actividad.dia_semana = datos.dia_semana
+    actividad.hora_inicio = datos.hora_inicio
+    actividad.hora_fin = datos.hora_fin
     actividad.puntos_otorga = datos.puntos_otorga
+    actividad.estado = datos.estado
     db.commit()
     db.refresh(actividad)
     return actividad
@@ -361,6 +374,88 @@ def ver_inscritos(id_actividad: int, db: Session = Depends(get_db)):
             "correo": usuario.correo if usuario else None,
         })
     return resultado
+
+
+# ---------- TOMAR ASISTENCIA ----------
+@app.get("/actividades/{id_actividad}/asistencia")
+def ver_asistencia(id_actividad: int, fecha_asistencia: date | None = None, db: Session = Depends(get_db)):
+    actividad = db.query(models.Actividad).filter(
+        models.Actividad.id_actividad == id_actividad
+    ).first()
+    if not actividad:
+        raise HTTPException(status_code=404, detail="Actividad no encontrada")
+
+    fecha = fecha_asistencia or date.today()
+    inscripciones = db.query(models.Inscripcion).filter(
+        models.Inscripcion.id_actividad == id_actividad
+    ).all()
+    registros = db.query(models.Asistencia).filter(
+        models.Asistencia.actividad_id == id_actividad,
+        models.Asistencia.fecha_asistencia == fecha,
+    ).all()
+    por_usuario = {registro.usuario_id: registro for registro in registros}
+
+    resultado = []
+    for inscripcion in inscripciones:
+        usuario = db.query(models.Usuario).filter(
+            models.Usuario.id_usuario == inscripcion.id_usuario
+        ).first()
+        registro = por_usuario.get(inscripcion.id_usuario)
+        resultado.append({
+            "usuario_id": inscripcion.id_usuario,
+            "nombre": usuario.nombre if usuario else "Desconocido",
+            "presente": registro.presente if registro else False,
+            "puntos_otorgados": registro.puntos_otorgados if registro else 0,
+        })
+    return {"actividad_id": id_actividad, "fecha_asistencia": fecha, "registros": resultado}
+
+
+@app.put("/actividades/{id_actividad}/asistencia")
+def guardar_asistencia(
+    id_actividad: int,
+    datos: schemas.AsistenciaGuardar,
+    db: Session = Depends(get_db),
+):
+    actividad = db.query(models.Actividad).filter(
+        models.Actividad.id_actividad == id_actividad
+    ).first()
+    if not actividad:
+        raise HTTPException(status_code=404, detail="Actividad no encontrada")
+
+    fecha = datos.fecha_asistencia or date.today()
+    usuarios_inscritos = {
+        inscripcion.id_usuario for inscripcion in db.query(models.Inscripcion).filter(
+            models.Inscripcion.id_actividad == id_actividad
+        ).all()
+    }
+    usuarios_enviados = {registro.usuario_id for registro in datos.registros}
+    no_inscritos = usuarios_enviados - usuarios_inscritos
+    if no_inscritos:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Usuarios no inscritos: {sorted(no_inscritos)}",
+        )
+
+    for registro in datos.registros:
+        asistencia = db.query(models.Asistencia).filter(
+            models.Asistencia.actividad_id == id_actividad,
+            models.Asistencia.usuario_id == registro.usuario_id,
+            models.Asistencia.fecha_asistencia == fecha,
+        ).first()
+        if asistencia:
+            asistencia.presente = registro.presente
+            asistencia.puntos_otorgados = registro.puntos_otorgados
+        else:
+            db.add(models.Asistencia(
+                actividad_id=id_actividad,
+                usuario_id=registro.usuario_id,
+                fecha_asistencia=fecha,
+                presente=registro.presente,
+                puntos_otorgados=registro.puntos_otorgados,
+            ))
+
+    db.commit()
+    return {"mensaje": "Asistencia guardada", "fecha_asistencia": fecha}
 
 # ---------- EDITAR / ELIMINAR TARJETA ----------
 @app.put("/tarjetas/{codigo_tarjeta}")

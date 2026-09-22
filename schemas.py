@@ -1,6 +1,6 @@
 from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime
+from typing import Literal, Optional
+from datetime import date, datetime, time
 
 class UsuarioCreate(BaseModel):
     nombre: str
@@ -44,21 +44,34 @@ class ConfirmarCodigo(BaseModel):
     nueva_password: str
 
 class ActividadCreate(BaseModel):
+    tipo: Literal["evento", "permanente"] = "evento"
     nombre: str
     descripcion: Optional[str] = None
     lugar: Optional[str] = None
-    fecha_inicio: datetime
-    fecha_fin: datetime
+    fecha_inicio: Optional[datetime] = None
+    fecha_fin: Optional[datetime] = None
+    frecuencia: Optional[str] = None
+    dia_semana: Optional[str] = None
+    hora_inicio: Optional[time] = None
+    hora_fin: Optional[time] = None
     puntos_otorga: int = 0
+    estado: Literal["activa", "finalizada", "cancelada"] = "activa"
 
 class ActividadResponse(BaseModel):
     id_actividad: int
+    tipo: str
     nombre: str
-    fecha: datetime
-    fecha_inicio: datetime
-    fecha_fin: datetime
+    fecha: Optional[datetime] = None
+    fecha_inicio: Optional[datetime] = None
+    fecha_fin: Optional[datetime] = None
     lugar: Optional[str] = None
+    descripcion: Optional[str] = None
+    frecuencia: Optional[str] = None
+    dia_semana: Optional[str] = None
+    hora_inicio: Optional[time] = None
+    hora_fin: Optional[time] = None
     puntos_otorga: int
+    estado: str
 
     class Config:
         from_attributes = True
@@ -66,6 +79,17 @@ class ActividadResponse(BaseModel):
 class InscripcionCreate(BaseModel):
     id_actividad: int
     id_usuario: int
+
+
+class AsistenciaRegistro(BaseModel):
+    usuario_id: int
+    presente: bool = True
+    puntos_otorgados: int = 0
+
+
+class AsistenciaGuardar(BaseModel):
+    fecha_asistencia: Optional[date] = None
+    registros: list[AsistenciaRegistro]
 
 class TarjetaEdit(BaseModel):
     id_usuario: Optional[int] = None
