@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from datetime import date, datetime
 from database import engine, get_db, Base
 import models
@@ -9,6 +9,41 @@ import schemas
 from auth_client import supabase
 
 Base.metadata.create_all(bind=engine)
+
+
+def migrate_actividades_schema():
+    """Bring existing deployments up to date with the activity model."""
+    inspector = inspect(engine)
+    if "actividades" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("actividades")}
+    column_definitions = {
+        "tipo": "VARCHAR(20) NOT NULL DEFAULT 'evento'",
+        "fecha_inicio": "TIMESTAMP NULL",
+        "fecha_fin": "TIMESTAMP NULL",
+        "frecuencia": "VARCHAR(20) NULL",
+        "dia_semana": "VARCHAR(20) NULL",
+        "hora_inicio": "TIME NULL",
+        "hora_fin": "TIME NULL",
+    }
+
+    with engine.begin() as connection:
+        for column_name, definition in column_definitions.items():
+            if column_name not in columns:
+                connection.execute(text(
+                    f"ALTER TABLE actividades ADD COLUMN {column_name} {definition}"
+                ))
+
+        if engine.dialect.name == "postgresql":
+            connection.execute(text(
+                "ALTER TABLE actividades "
+                "ALTER COLUMN fecha_inicio DROP NOT NULL, "
+                "ALTER COLUMN fecha_fin DROP NOT NULL"
+            ))
+
+
+migrate_actividades_schema()
 
 app = FastAPI(title="Lumin API")
 
